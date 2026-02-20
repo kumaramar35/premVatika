@@ -266,7 +266,6 @@
 import express from 'express';
 import Razorpay from 'razorpay';
 import cors from 'cors';
-import { db } from "./db.js";
 import { createHmac } from 'crypto';
 import dotenv from 'dotenv';
 import mongoose from "mongoose";
