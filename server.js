@@ -303,6 +303,10 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "Server is awake" });
+});
+
 app.post('/create-order', async (req, res, next) => {
     try {
         const { amount, currency = 'INR', receipt } = req.body;
