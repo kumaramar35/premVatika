@@ -1,274 +1,10 @@
-// import express from "express";
-// import cors from "cors";
-// import dotenv from "dotenv";
-// import crypto from "crypto";
-// import axios from "axios";
-
-// dotenv.config();
-// const app = express();
-// const PORT = process.env.PORT || 5000;
-
-// app.use(cors());
-// app.use(express.json());
-
-// const PHONEPE_BASE_URL = "https://api.phonepe.com/apis/hermes/pg/v1";
-// const MERCHANT_ID = process.env.MERCHANT_ID;
-// const SALT_KEY = process.env.SALT_KEY;
-// const SALT_INDEX = process.env.SALT_INDEX;
-
-// app.post("/create-payment", async (req, res) => {
-//     try {
-//         const { amount } = req.body;
-//         if (!amount || amount <= 0) {
-//             return res.status(400).json({ error: "Invalid amount" });
-//         }
-
-//         const transactionId = "TXN_" + Date.now();
-//         const payload = {
-//             merchantId: MERCHANT_ID,
-//             transactionId,
-//             amount: amount * 100, // Convert to paisa
-//             redirectUrl: "http://localhost:5173/success",
-//             callbackUrl: "http://localhost:5000/payment-status"
-//         };
-
-//         const payloadString = JSON.stringify(payload);
-//         const checksum = crypto.createHash("sha256").update(payloadString + SALT_KEY).digest("hex") + "###" + SALT_INDEX;
-
-//         const response = await axios.post(`${PHONEPE_BASE_URL}/initiate`, payload, {
-//             headers: { "X-VERIFY": checksum, "Content-Type": "application/json" }
-//         });
-
-//         res.json({ checkoutPageUrl: response.data.data.instrumentResponse.redirectInfo.url });
-//     } catch (error) {
-//         console.error("Payment Error:", error);
-//         res.status(500).json({ error: "Payment initiation failed" });
-//     }
-// });
-
-// app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`);
-// });
-
-// import express, { json } from 'express';
-// import Razorpay from 'razorpay';
-// import cors from 'cors';
-// import { createHmac } from 'crypto';
-
-// const app = express();
-
-// // Middleware
-// app.use(cors());
-// app.use(json());
-
-// // Initialize Razorpay instance
-// const razorpay = new Razorpay({
-//     key_id: 'YOUR_RAZORPAY_KEY_ID',
-//     key_secret: 'YOUR_RAZORPAY_KEY_SECRET'
-// });
-
-// // Create order endpoint
-// app.post('/create-order', async (req, res) => {
-//     try {
-//         const { amount, currency = 'INR', receipt } = req.body;
-
-//         const options = {
-//             amount: amount * 100, // amount in smallest currency unit (paise)
-//             currency: currency,
-//             receipt: receipt || `receipt_${Date.now()}`,
-//         };
-
-//         const order = await razorpay.orders.create(options);
-        
-//         res.json({
-//             success: true,
-//             order: order,
-//             key_id: razorpay.key_id
-//         });
-//     } catch (error) {
-//         console.error('Error creating order:', error);
-//         res.status(500).json({
-//             success: false,
-//             message: 'Error creating order',
-//             error: error.message
-//         });
-//     }
-// });
-
-// // Verify payment endpoint
-// app.post('/verify-payment', (req, res) => {
-//     try {
-//         const {
-//             razorpay_order_id,
-//             razorpay_payment_id,
-//             razorpay_signature
-//         } = req.body;
-
-//         // Create signature
-//         const sign = razorpay_order_id + '|' + razorpay_payment_id;
-//         const expectedSign = createHmac('sha256', razorpay.key_secret)
-//             .update(sign.toString())
-//             .digest('hex');
-
-//         if (razorpay_signature === expectedSign) {
-//             // Payment is verified
-//             // You can update your database here
-//             res.json({
-//                 success: true,
-//                 message: 'Payment verified successfully',
-//                 paymentId: razorpay_payment_id,
-//                 orderId: razorpay_order_id
-//             });
-//         } else {
-//             res.status(400).json({
-//                 success: false,
-//                 message: 'Invalid signature'
-//             });
-//         }
-//     } catch (error) {
-//         console.error('Error verifying payment:', error);
-//         res.status(500).json({
-//             success: false,
-//             message: 'Error verifying payment',
-//             error: error.message
-//         });
-//     }
-// });
-
-// // Get payment details (optional)
-// app.get('/payment/:paymentId', async (req, res) => {
-//     try {
-//         const payment = await razorpay.payments.fetch(req.params.paymentId);
-//         res.json({
-//             success: true,
-//             payment: payment
-//         });
-//     } catch (error) {
-//         res.status(500).json({
-//             success: false,
-//             message: 'Error fetching payment',
-//             error: error.message
-//         });
-//     }
-// });
-
-// const PORT = process.env.PORT || 5000;
-
-// app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`);
-// });
-
-// import express from 'express';
-// import Razorpay from 'razorpay';
-// import cors from 'cors';
-// import { createHmac } from 'crypto';
-// import dotenv from 'dotenv';
-
-// // Load environment variables from .env file
-// dotenv.config();
-
-// const app = express();
-
-// // 1. Configure CORS to allow communication with your React frontend
-// app.use(cors({
-//     origin: "http://localhost:3000", // Standard React port
-//     methods: ["GET", "POST"],
-//     credentials: true
-// }));
-
-// app.use(express.json());
-
-// // 2. Initialize Razorpay using environment variables
-// const razorpay = new Razorpay({
-//     key_id: process.env.RAZORPAY_KEY_ID, // Add this to your .env
-//     key_secret: process.env.RAZORPAY_KEY_SECRET // Add this to your .env
-// });
-
-// // Create order endpoint
-// app.post('/create-order', async (req, res) => {
-//     try {
-//         const { amount, currency = 'INR', receipt } = req.body;
-
-//         const options = {
-//             amount: amount * 100, // Amount in paise
-//             currency: currency,
-//             receipt: receipt || `receipt_${Date.now()}`,
-//         };
-
-//         const order = await razorpay.orders.create(options);
-        
-//         res.json({
-//             success: true,
-//             order: order,
-//             key_id: process.env.RAZORPAY_KEY_ID // Send key_id to frontend for the modal
-//         });
-//     } catch (error) {
-//         console.error('Error creating order:', error);
-//         res.status(500).json({
-//             success: false,
-//             message: 'Error creating order',
-//             error: error.message
-//         });
-//     }
-// });
-
-// // Verify payment endpoint
-// app.post('/verify-payment', (req, res) => {
-//     try {
-//         const {
-//             razorpay_order_id,
-//             razorpay_payment_id,
-//             razorpay_signature
-//         } = req.body;
-
-//         const sign = razorpay_order_id + '|' + razorpay_payment_id;
-//         const expectedSign = createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-//             .update(sign.toString())
-//             .digest('hex');
-
-//         if (razorpay_signature === expectedSign) {
-//             res.json({
-//                 success: true,
-//                 message: 'Payment verified successfully',
-//                 paymentId: razorpay_payment_id,
-//                 orderId: razorpay_order_id
-//             });
-//         } else {
-//             res.status(400).json({
-//                 success: false,
-//                 message: 'Invalid signature'
-//             });
-//         }
-//     } catch (error) {
-//         console.error('Error verifying payment:', error);
-//         res.status(500).json({
-//             success: false,
-//             message: 'Error verifying payment'
-//         });
-//     }
-// });
-
-// // Global Error Handler
-// app.use((err, req, res, next) => {
-//     console.error("SERVER ERROR:", err.message);
-//     res.status(500).json({
-//         success: false,
-//         message: 'Internal Server Error',
-//         error: err.message
-//     });
-// });
-
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => {
-//     console.log(`Server running on http://localhost:${PORT}`);
-// });
-
 import express from 'express';
 import Razorpay from 'razorpay';
 import cors from 'cors';
 import { createHmac } from 'crypto';
 import dotenv from 'dotenv';
 import mongoose from "mongoose";
+import nodemailer from 'nodemailer';
 import booking from './db/booking.js';
 
 
@@ -294,14 +30,300 @@ app.use(cors({
 }));
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-.then(()=>console.log("MongoDB Connected"))
-.catch(console.error);
+// MongoDB connection with fallback and detailed diagnostics
+const connectToMongoDB = async () => {
+  const cloudUri = process.env.MONGO_URI;
+  const localUri = 'mongodb://localhost:27017/premvatika';
+  
+  // Detect if we're in a cloud environment (Render, Heroku, etc.)
+  const isCloudEnvironment = process.env.RENDER || process.env.NODE_ENV === 'production';
+  
+  console.log('\n' + '='.repeat(60));
+  console.log('MongoDB Connection Diagnostics');
+  console.log('='.repeat(60));
+  console.log(`Environment: ${isCloudEnvironment ? 'Cloud/Production' : 'Development/Local'}`);
+  
+  if (!cloudUri) {
+    console.error('❌ MONGO_URI is not defined in .env file');
+    console.log('Please add your MongoDB Atlas connection string to .env');
+    console.log('Example: MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/');
+  } else {
+    console.log('Attempting to connect to MongoDB Atlas (cloud)...');
+    console.log('Cloud URI (masked):', cloudUri.replace(/:[^:@]+@/, ':****@'));
+    
+    // Extract cluster name for diagnostics
+    const clusterMatch = cloudUri.match(/@([^/?]+)/);
+    const clusterName = clusterMatch ? clusterMatch[1] : 'unknown';
+    console.log(`Cluster: ${clusterName}`);
+  }
+  
+  try {
+    // First try cloud connection
+    console.log('\n1. Testing cloud connection...');
+    await mongoose.connect(cloudUri, {
+      serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 45000,
+      family: 4,
+      retryWrites: true,
+      w: 'majority'
+    });
+    console.log("✅ MongoDB Atlas (cloud) Connected successfully");
+    console.log("Database:", mongoose.connection.db.databaseName);
+    console.log("Connection state:", mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected');
+    return true;
+  } catch (cloudError) {
+    console.error("\n❌ MongoDB Atlas connection failed:", cloudError.message);
+    
+    // Provide specific diagnostics based on error type
+    if (cloudError.message.includes('ENOTFOUND') || cloudError.message.includes('ECONNREFUSED')) {
+      console.log('\n🔍 DIAGNOSIS: DNS resolution failed - cluster domain may not exist');
+      console.log('Possible causes:');
+      console.log('  1. Cluster is paused or deleted in MongoDB Atlas');
+      console.log('  2. Cluster name is incorrect');
+      console.log('  3. Network/DNS issues');
+    } else if (cloudError.message.includes('authentication failed')) {
+      console.log('\n🔍 DIAGNOSIS: Authentication failed');
+      console.log('Possible causes:');
+      console.log('  1. Incorrect username or password');
+      console.log('  2. Database user does not exist');
+      console.log('  3. IP address not whitelisted');
+    } else if (cloudError.name === 'MongoServerSelectionError') {
+      console.log('\n🔍 DIAGNOSIS: Server selection error');
+      console.log('Possible causes:');
+      console.log('  1. IP address not whitelisted in Network Access');
+      console.log('  2. Cluster is paused');
+      console.log('  3. Firewall blocking connection');
+    }
+    
+    console.log('\n🛠️  RECOMMENDED ACTIONS:');
+    console.log('1. Go to https://cloud.mongodb.com');
+    console.log('2. Check if your cluster exists and is RUNNING (not paused)');
+    console.log('3. In Network Access, add your IP address (or 0.0.0.0/0 for all)');
+    console.log('4. Verify database user credentials');
+    console.log('5. Get correct connection string:');
+    console.log('   - Click "Connect" on your cluster');
+    console.log('   - Choose "Drivers"');
+    console.log('   - Copy Node.js connection string');
+    console.log('   - Update MONGO_URI in .env file');
+    
+    // Skip local fallback in cloud environments (Render, production)
+    if (isCloudEnvironment) {
+      console.log('\n' + '-'.repeat(40));
+      console.log('⚠️  Skipping local MongoDB fallback (cloud environment detected)');
+      console.log('   Local MongoDB is not available on Render/Heroku/etc.');
+      console.log('\n⚠️  Server will start in degraded mode (no database)');
+      console.log('   API endpoints will return errors for database operations');
+      return false;
+    }
+    
+    // Try local MongoDB as fallback (development only)
+    console.log('\n' + '-'.repeat(40));
+    console.log('Attempting fallback to local MongoDB (development only)...');
+    try {
+      await mongoose.connect(localUri, {
+        serverSelectionTimeoutMS: 8000,
+        socketTimeoutMS: 30000,
+      });
+      console.log("✅ Local MongoDB Connected successfully (fallback)");
+      console.log("Database:", mongoose.connection.db.databaseName);
+      console.log("\n⚠️  IMPORTANT: Using local MongoDB as fallback.");
+      console.log("This is OK for development but not for production.");
+      console.log("\nTo fix cloud MongoDB connection:");
+      console.log("1. Follow the recommended actions above");
+      console.log("2. Restart server after updating .env file");
+      return true;
+    } catch (localError) {
+      console.error("❌ Local MongoDB connection also failed:", localError.message);
+      console.error("\n💡 Both cloud and local MongoDB connections failed.");
+      console.error("\nQUICK SETUP OPTIONS:");
+      console.error("Option A: Install local MongoDB");
+      console.error("  1. Download MongoDB from https://www.mongodb.com/try/download/community");
+      console.error("  2. Install and run 'mongod' service");
+      console.error("  3. Restart this server");
+      console.error("\nOption B: Fix cloud MongoDB");
+      console.error("  1. Create free cluster at https://cloud.mongodb.com");
+      console.error("  2. Add IP whitelist (0.0.0.0/0 for all)");
+      console.error("  3. Create database user");
+      console.error("  4. Get connection string and update .env");
+      console.error("\nOption C: Use MongoDB Atlas with correct credentials");
+      console.error("  1. Check if cluster 'premvatika.5dx3qcd.mongodb.net' exists");
+      console.error("  2. If not, create new cluster and update .env");
+      
+      // Continue running in degraded mode (API will work but database operations will fail)
+      console.log("\n⚠️  Server will start in degraded mode (no database)");
+      console.log("   API endpoints will return errors for database operations");
+      return false;
+    }
+  }
+};
+
+// Connect to MongoDB
+connectToMongoDB();
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
+
+// Email transporter configuration with fallback to Ethereal for testing
+const createTransporter = async () => {
+  const gmailUser = process.env.EMAIL_USER;
+  const gmailPass = process.env.EMAIL_PASSWORD;
+  
+  // First try Gmail configuration
+  if (gmailUser && gmailPass) {
+    try {
+      const gmailTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass
+        }
+      });
+      
+      // Test the connection
+      await gmailTransporter.verify();
+      console.log('✅ Using Gmail SMTP for emails');
+      return gmailTransporter;
+    } catch (gmailError) {
+      console.warn('⚠️ Gmail SMTP failed, falling back to Ethereal for testing:', gmailError.message);
+    }
+  }
+  
+  // Fallback to Ethereal.email (fake SMTP for testing)
+  console.log('🔄 Creating Ethereal test account for email testing...');
+  try {
+    const testAccount = await nodemailer.createTestAccount();
+    console.log('✅ Ethereal test account created:', testAccount.user);
+    
+    const etherealTransporter = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass
+      }
+    });
+    
+    console.log('📧 Using Ethereal for emails. View sent emails at: https://ethereal.email');
+    console.log('   Login with:', testAccount.user);
+    console.log('   Password:', testAccount.pass);
+    
+    return etherealTransporter;
+  } catch (etherealError) {
+    console.error('❌ Both Gmail and Ethereal failed:', etherealError.message);
+    // Return a dummy transporter that logs but doesn't send
+    return {
+      sendMail: async (mailOptions) => {
+        console.log('📨 [DUMMY] Would send email:', {
+          to: mailOptions.to,
+          subject: mailOptions.subject
+        });
+        return { messageId: 'dummy-' + Date.now() };
+      },
+      verify: async () => true
+    };
+  }
+};
+
+// Email sending function
+const sendBookingEmail = async (bookingData, toEmail, isAdmin = false) => {
+  try {
+    const transporter = await createTransporter();
+    
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    };
+
+    const subject = isAdmin 
+      ? `New Booking Received - ${bookingData.name}`
+      : `Booking Confirmation - Hotel Prem Vatika`;
+
+    const htmlContent = isAdmin 
+      ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #cfa670; text-align: center;">New Booking Alert! 🎉</h2>
+          <p><strong>Booking Details:</strong></p>
+          <ul>
+            <li><strong>Guest Name:</strong> ${bookingData.name}</li>
+            <li><strong>Email:</strong> ${bookingData.email}</li>
+            <li><strong>Phone:</strong> ${bookingData.phone}</li>
+            <li><strong>Room ID:</strong> ${bookingData.roomId}</li>
+            <li><strong>Check-in:</strong> ${formatDate(bookingData.checkIn)}</li>
+            <li><strong>Check-out:</strong> ${formatDate(bookingData.checkOut)}</li>
+            <li><strong>Guests:</strong> ${bookingData.guests}</li>
+            <li><strong>Amount Paid:</strong> ₹${bookingData.amount}</li>
+            <li><strong>Payment ID:</strong> ${bookingData.paymentId}</li>
+            <li><strong>Booking Date:</strong> ${new Date(bookingData.createdAt).toLocaleString()}</li>
+          </ul>
+          <p style="background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+            <strong>Note:</strong> This booking requires your attention. Please prepare the room accordingly.
+          </p>
+        </div>
+      `
+      : `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #cfa670; text-align: center;">Booking Confirmed! 🎉</h2>
+          <p>Dear ${bookingData.name},</p>
+          <p>Thank you for choosing <strong>Hotel Prem Vatika</strong>. Your booking has been successfully confirmed.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #333; margin-top: 0;">Booking Summary</h3>
+            <ul style="list-style-type: none; padding-left: 0;">
+              <li><strong>Booking Reference:</strong> ${bookingData.paymentId.substring(0, 8)}</li>
+              <li><strong>Check-in Date:</strong> ${formatDate(bookingData.checkIn)}</li>
+              <li><strong>Check-out Date:</strong> ${formatDate(bookingData.checkOut)}</li>
+              <li><strong>Number of Guests:</strong> ${bookingData.guests}</li>
+              <li><strong>Total Amount Paid:</strong> ₹${bookingData.amount}</li>
+              <li><strong>Payment Status:</strong> <span style="color: green; font-weight: bold;">Confirmed</span></li>
+            </ul>
+          </div>
+          
+          <p><strong>Important Information:</strong></p>
+          <ul> 
+            <li>Check-in time: 12:00 PM</li>
+            <li>Check-out time: 11:00 AM</li>
+            <li>Please carry a valid ID proof at the time of check-in</li>
+            <li>For any queries, contact us at: +91-9111411138  or prempatidar166@gmail.com</li>
+          </ul>
+          
+          <p style="text-align: center; margin-top: 30px;">
+            <a href="https://premvatika.com" style="background-color: #cfa670; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Visit Our Website
+            </a>
+          </p>
+          
+          <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            We look forward to welcoming you at Hotel Prem Vatika!
+          </p>
+        </div>
+      `;
+
+    const fromEmail = process.env.EMAIL_USER || '"Hotel Prem Vatika" <noreply@premvatika.com>';
+    const mailOptions = {
+      from: typeof fromEmail === 'string' && fromEmail.includes('@')
+        ? `"Hotel Prem Vatika" <${fromEmail}>`
+        : fromEmail,
+      to: toEmail,
+      subject: subject,
+      html: htmlContent
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${toEmail}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
+};
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "Server is awake" });
@@ -334,10 +356,28 @@ app.post('/create-order', async (req, res, next) => {
 
 app.post('/verify-payment',async (req, res, next) => {
     try {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, roomId, checkIn, checkOut } = req.body;
+        const { 
+          razorpay_order_id, 
+          razorpay_payment_id, 
+          razorpay_signature, 
+          roomId, 
+          checkIn, 
+          checkOut,
+          name,
+          email,
+          phone,
+          guests,
+          amount,
+          specialRequests
+        } = req.body;
 
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !roomId || !checkIn || !checkOut) {
             return res.status(400).json({ success: false, message: 'Missing payment details' });
+        }
+
+        // Validate required user data
+        if (!name || !email || !phone) {
+          return res.status(400).json({ success: false, message: 'Missing user information' });
         }
 
         const sign = razorpay_order_id + '|' + razorpay_payment_id;
@@ -353,8 +393,40 @@ app.post('/verify-payment',async (req, res, next) => {
 
 
         if (razorpay_signature === expectedSign) {
-               await booking.create({ roomId, checkIn, checkOut });
-            res.json({ success: true, message: 'Payment verified successfully' });
+          // Create booking with all data
+          const bookingData = {
+            roomId,
+            checkIn: new Date(checkIn),
+            checkOut: new Date(checkOut),
+            name,
+            email,
+            phone,
+            guests: guests || 1,
+            paymentId: razorpay_payment_id,
+            orderId: razorpay_order_id,
+            amount: amount || 0,
+            specialRequests: specialRequests || "",
+            status: "confirmed"
+          };
+
+          const newBooking = await booking.create(bookingData);
+          
+          // Send email to client
+          const clientEmailSent = await sendBookingEmail(bookingData, email, false);
+          
+          // Send email to admin (get admin email from environment variable)
+          const adminEmail = process.env.ADMIN_EMAIL || "admin@premvatika.com";
+          const adminEmailSent = await sendBookingEmail(bookingData, adminEmail, true);
+          
+          res.json({ 
+            success: true, 
+            message: 'Payment verified successfully',
+            bookingId: newBooking._id,
+            emailsSent: {
+              client: clientEmailSent,
+              admin: adminEmailSent
+            }
+          });
             
         } else {
            return res.status(400).json({ success: false, message: 'Invalid signature' });
@@ -368,13 +440,25 @@ app.post('/verify-payment',async (req, res, next) => {
 /* Get booked dates */
 app.get("/booked/:roomId", async (req,res,next)=>{
   try {
+    console.log(`[DEBUG] /booked/${req.params.roomId} - Querying bookings for roomId`);
     const data = await booking.find({ roomId: req.params.roomId });
+    console.log(`[DEBUG] Found ${data.length} bookings for room ${req.params.roomId}`);
     res.json(data);
   } catch (err) {
+    console.error(`[ERROR] /booked/${req.params.roomId} -`, err.message);
     next(err);
   }
 });
 
+// Get all bookings (for admin)
+app.get("/bookings", async (req, res, next) => {
+  try {
+    const bookings = await booking.find().sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -390,4 +474,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
-
