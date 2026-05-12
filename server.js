@@ -165,7 +165,7 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// Email transporter configuration with fallback to Ethereal for testing
+// Email transporter configuration with fallback to dummy for testing
 const createTransporter = async () => {
   const gmailUser = process.env.EMAIL_USER;
   const gmailPass = process.env.EMAIL_PASSWORD;
@@ -186,45 +186,25 @@ const createTransporter = async () => {
       console.log('✅ Using Gmail SMTP for emails');
       return gmailTransporter;
     } catch (gmailError) {
-      console.warn('⚠️ Gmail SMTP failed, falling back to Ethereal for testing:', gmailError.message);
+      console.warn('⚠️ Gmail SMTP failed:', gmailError.message);
     }
   }
   
-  // Fallback to Ethereal.email (fake SMTP for testing)
-  console.log('🔄 Creating Ethereal test account for email testing...');
-  try {
-    const testAccount = await nodemailer.createTestAccount();
-    console.log('✅ Ethereal test account created:', testAccount.user);
-    
-    const etherealTransporter = nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass
-      }
-    });
-    
-    console.log('📧 Using Ethereal for emails. View sent emails at: https://ethereal.email');
-    console.log('   Login with:', testAccount.user);
-    console.log('   Password:', testAccount.pass);
-    
-    return etherealTransporter;
-  } catch (etherealError) {
-    console.error('❌ Both Gmail and Ethereal failed:', etherealError.message);
-    // Return a dummy transporter that logs but doesn't send
-    return {
-      sendMail: async (mailOptions) => {
-        console.log('📨 [DUMMY] Would send email:', {
-          to: mailOptions.to,
-          subject: mailOptions.subject
-        });
-        return { messageId: 'dummy-' + Date.now() };
-      },
-      verify: async () => true
-    };
-  }
+  // Fallback to dummy transport (logs emails without sending)
+  console.log('📧 Using dummy transport for email testing (logs only, no actual sends)');
+  return {
+    sendMail: async (mailOptions) => {
+      console.log('📨 [LOG] Email would be sent:', {
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        timestamp: new Date().toISOString()
+      });
+      // Simulate async operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return { messageId: 'dummy-' + Date.now() };
+    },
+    verify: async () => true
+  };
 };
 
 // Email sending function
@@ -316,11 +296,18 @@ const sendBookingEmail = async (bookingData, toEmail, isAdmin = false) => {
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Email sent to ${toEmail}: ${info.messageId}`);
+    // Use timeout to prevent hanging email sends
+    const emailPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email send timeout')), 5000)
+    );
+    
+    const info = await Promise.race([emailPromise, timeoutPromise]);
+    console.log(`✅ Email sent to ${toEmail}: ${info.messageId}`);
     return true;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error(`⚠️ Email error for ${toEmail}:`, error.message);
+    // Return false but don't throw - let payment go through
     return false;
   }
 };
@@ -410,22 +397,24 @@ app.post('/verify-payment',async (req, res, next) => {
           };
 
           const newBooking = await booking.create(bookingData);
+          console.log("✅ Booking created successfully:", newBooking._id);
           
-          // Send email to client
-          const clientEmailSent = await sendBookingEmail(bookingData, email, false);
+          // Send emails asynchronously - don't wait or fail if emails timeout
+          // Just log the results
+          sendBookingEmail(bookingData, email, false).catch(err => {
+            console.error('⚠️ Failed to send client email (non-blocking):', err.message);
+          });
           
-          // Send email to admin (get admin email from environment variable)
-          const adminEmail = process.env.ADMIN_EMAIL || "admin@premvatika.com";
-          const adminEmailSent = await sendBookingEmail(bookingData, adminEmail, true);
+          sendBookingEmail(bookingData, process.env.ADMIN_EMAIL || "admin@premvatika.com", true).catch(err => {
+            console.error('⚠️ Failed to send admin email (non-blocking):', err.message);
+          });
           
+          // Return success immediately - don't wait for emails
           res.json({ 
             success: true, 
             message: 'Payment verified successfully',
             bookingId: newBooking._id,
-            emailsSent: {
-              client: clientEmailSent,
-              admin: adminEmailSent
-            }
+            note: 'Confirmation emails may take a few moments to arrive'
           });
             
         } else {
