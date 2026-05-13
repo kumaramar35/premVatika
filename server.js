@@ -174,8 +174,8 @@ const createTransporter = async () => {
   // First try Brevo (production)
   if (brevoApiKey) {
     try {
-      const Brevo = (await import('@getbrevo/brevo')).default;
-      const brevoClient = new Brevo({ apiKey: brevoApiKey });
+      const { BrevoClient } = await import('@getbrevo/brevo');
+      const brevoClient = new BrevoClient({ apiKey: brevoApiKey });
       console.log('✅ Using Brevo for emails');
 
       return {
