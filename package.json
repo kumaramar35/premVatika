@@ -12,6 +12,7 @@
   "author": "amar",
   "license": "ISC",
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.4",
     "axios": "^1.13.2",
     "body-parser": "^1.20.2",
     "cors": "^2.8.6",

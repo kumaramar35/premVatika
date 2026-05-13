@@ -167,10 +167,42 @@ const razorpay = new Razorpay({
 
 // Email transporter configuration with fallback to dummy for testing
 const createTransporter = async () => {
+  const brevoApiKey = process.env.BREVO_API_KEY;
   const gmailUser = process.env.EMAIL_USER;
   const gmailPass = process.env.EMAIL_PASSWORD;
   
-  // First try Gmail configuration
+  // First try Brevo (production)
+  if (brevoApiKey) {
+    try {
+      const Brevo = (await import('@getbrevo/brevo')).default;
+      const brevoClient = new Brevo({ apiKey: brevoApiKey });
+      console.log('✅ Using Brevo for emails');
+
+      return {
+        sendMail: async (mailOptions) => {
+          const senderEmail = mailOptions.from?.match(/<([^>]+)>/)?.[1] || process.env.EMAIL_USER || 'noreply@premvatika.com';
+          const payload = {
+            sender: {
+              name: 'Hotel Prem Vatika',
+              email: senderEmail,
+            },
+            to: [{ email: mailOptions.to, name: '' }],
+            subject: mailOptions.subject,
+            htmlContent: mailOptions.html,
+          };
+
+          const response = await brevoClient.transactionalEmails.sendTransacEmail(payload);
+          const messageId = response?.data?.messageId || response?.rawResponse?.headers?.get?.('X-Message-Id') || response?.rawResponse?.headers?.get?.('x-message-id') || 'brevo-' + Date.now();
+          return { messageId };
+        },
+        verify: async () => true
+      };
+    } catch (brevoError) {
+      console.warn('⚠️ Brevo failed:', brevoError.message);
+    }
+  }
+  
+  // Fallback to Gmail (development/local)
   if (gmailUser && gmailPass) {
     try {
       const gmailTransporter = nodemailer.createTransport({
@@ -190,7 +222,7 @@ const createTransporter = async () => {
     }
   }
   
-  // Fallback to dummy transport (logs emails without sending)
+  // Final fallback to dummy transport (logs only)
   console.log('📧 Using dummy transport for email testing (logs only, no actual sends)');
   return {
     sendMail: async (mailOptions) => {
