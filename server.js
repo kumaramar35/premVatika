@@ -166,79 +166,97 @@ const razorpay = new Razorpay({
 });
 
 // Email transporter configuration with fallback to dummy for testing
-const createTransporter = async () => {
-  const brevoApiKey = process.env.BREVO_API_KEY;
-  const gmailUser = process.env.EMAIL_USER;
-  const gmailPass = process.env.EMAIL_PASSWORD;
+// const createTransporter = async () => {
+//   const brevoApiKey = process.env.BREVO_API_KEY;
+//   const gmailUser = process.env.EMAIL_USER;
+//   const gmailPass = process.env.EMAIL_PASSWORD;
   
-  // First try Brevo (production)
-  if (brevoApiKey) {
-    try {
-      const { BrevoClient } = await import('@getbrevo/brevo');
-      const brevoClient = new BrevoClient({ apiKey: brevoApiKey });
-      console.log('✅ Using Brevo for emails');
+//   // First try Brevo (production)
+//   if (brevoApiKey) {
+//     try {
+//       const { BrevoClient } = await import('@getbrevo/brevo');
+//       const brevoClient = new BrevoClient({ apiKey: brevoApiKey });
+//       console.log('✅ Using Brevo for emails');
 
-      return {
-        sendMail: async (mailOptions) => {
-          const senderEmail = mailOptions.from?.match(/<([^>]+)>/)?.[1] || process.env.EMAIL_USER || 'noreply@premvatika.com';
-          const payload = {
-            sender: {
-              name: 'Hotel Prem Vatika',
-              email: senderEmail,
-            },
-            to: [{ email: mailOptions.to, name: '' }],
-            subject: mailOptions.subject,
-            htmlContent: mailOptions.html,
-          };
+//       return {
+//         sendMail: async (mailOptions) => {
+//           const senderEmail = mailOptions.from?.match(/<([^>]+)>/)?.[1] || process.env.EMAIL_USER || 'noreply@premvatika.com';
+//           const payload = {
+//             sender: {
+//               name: 'Hotel Prem Vatika',
+//               email: senderEmail,
+//             },
+//             to: [{ email: mailOptions.to, name: mailOptions.toName || 'Guest' }],
+//             subject: mailOptions.subject,
+//             htmlContent: mailOptions.html,
+//           };
 
-          const response = await brevoClient.transactionalEmails.sendTransacEmail(payload);
-          const messageId = response?.data?.messageId || response?.rawResponse?.headers?.get?.('X-Message-Id') || response?.rawResponse?.headers?.get?.('x-message-id') || 'brevo-' + Date.now();
-          return { messageId };
-        },
-        verify: async () => true
-      };
-    } catch (brevoError) {
-      console.warn('⚠️ Brevo failed:', brevoError.message);
-    }
-  }
+//           const response = await brevoClient.transactionalEmails.sendTransacEmail(payload);
+//           const messageId = response?.data?.messageId || response?.rawResponse?.headers?.get?.('X-Message-Id') || response?.rawResponse?.headers?.get?.('x-message-id') || 'brevo-' + Date.now();
+//           return { messageId };
+//         },
+//         verify: async () => true
+//       };
+//     } catch (brevoError) {
+//       console.warn('⚠️ Brevo failed:', brevoError.message);
+//     }
+//   }
   
-  // Fallback to Gmail (development/local)
-  if (gmailUser && gmailPass) {
-    try {
-      const gmailTransporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: gmailUser,
-          pass: gmailPass
-        }
-      });
+//   // Fallback to Gmail (development/local)
+//   if (gmailUser && gmailPass) {
+//     try {
+//       const gmailTransporter = nodemailer.createTransport({
+//         service: 'gmail',
+//         auth: {
+//           user: gmailUser,
+//           pass: gmailPass
+//         }
+//       });
       
-      // Test the connection
-      await gmailTransporter.verify();
-      console.log('✅ Using Gmail SMTP for emails');
-      return gmailTransporter;
-    } catch (gmailError) {
-      console.warn('⚠️ Gmail SMTP failed:', gmailError.message);
-    }
-  }
+//       // Test the connection
+//       await gmailTransporter.verify();
+//       console.log('✅ Using Gmail SMTP for emails');
+//       return gmailTransporter;
+//     } catch (gmailError) {
+//       console.warn('⚠️ Gmail SMTP failed:', gmailError.message);
+//     }
+//   }
   
-  // Final fallback to dummy transport (logs only)
-  console.log('📧 Using dummy transport for email testing (logs only, no actual sends)');
-  return {
-    sendMail: async (mailOptions) => {
-      console.log('📨 [LOG] Email would be sent:', {
-        to: mailOptions.to,
-        subject: mailOptions.subject,
-        timestamp: new Date().toISOString()
-      });
-      // Simulate async operation
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return { messageId: 'dummy-' + Date.now() };
-    },
-    verify: async () => true
-  };
-};
+//   // Final fallback to dummy transport (logs only)
+//   console.log('📧 Using dummy transport for email testing (logs only, no actual sends)');
+//   return {
+//     sendMail: async (mailOptions) => {
+//       console.log('📨 [LOG] Email would be sent:', {
+//         to: mailOptions.to,
+//         subject: mailOptions.subject,
+//         timestamp: new Date().toISOString()
+//       });
+//       // Simulate async operation
+//       await new Promise(resolve => setTimeout(resolve, 100));
+//       return { messageId: 'dummy-' + Date.now() };
+//     },
+//     verify: async () => true
+//   };
+// };
 
+const createTransporter = async () => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
+
+  try {
+    await transporter.verify();
+    console.log('✅ Gmail SMTP connected');
+  } catch (err) {
+    console.warn('⚠️ Gmail SMTP failed:', err.message);
+  }
+
+  return transporter;
+};
 // Email sending function
 const sendBookingEmail = async (bookingData, toEmail, isAdmin = false) => {
   try {
@@ -324,6 +342,7 @@ const sendBookingEmail = async (bookingData, toEmail, isAdmin = false) => {
         ? `"Hotel Prem Vatika" <${fromEmail}>`
         : fromEmail,
       to: toEmail,
+      toName: isAdmin ? 'Hotel Prem Vatika Admin' : (bookingData.name || 'Guest'),
       subject: subject,
       html: htmlContent
     };
